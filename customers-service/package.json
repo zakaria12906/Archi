@@ -1,0 +1,21 @@
+{
+    "name": "customers-service",
+    "version": "1.0.0",
+    "description": "Service gérant les données client (profil).",
+    "main": "src/app.js",
+    "scripts": {
+        "start": "node src/app.js",
+        "dev": "nodemon src/app.js"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "jsonwebtoken": "^8.5.1",
+        "mongoose": "^6.9.1",
+        "multer": "^1.4.5-lts.1"
+    },
+    "devDependencies": {
+        "nodemon": "^2.0.22"
+    }
+}
