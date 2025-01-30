@@ -15,11 +15,27 @@ const accountSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  role: {
+    type: String,
+    default: 'parieur' // ou "user" par défaut
+  },
+  refreshToken: {
+    type: String
+    // On peut stocker le dernier refreshToken, ou un tableau si on veut gérer multi-devices
+  },
+  resetToken: {
+    type: String
+    // Utilisé pour le reset de mot de passe
+  },
+  resetTokenExpires: {
+    type: Date
+    // Date d'expiration du reset token
+  },
   createdAt: {
     type: Date,
     default: Date.now
-  },
-  // Optionnel: refresh_token, lastConnection, etc.
+  }
+  // + d'autres champs si besoin (date de dernière connexion, etc.)
 });
 
 module.exports = mongoose.model('Account', accountSchema);

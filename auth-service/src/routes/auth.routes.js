@@ -1,15 +1,23 @@
-// src/routes/auth.routes.js
-
 const router = require('express').Router();
 const AuthController = require('../controllers/auth.controller');
+const { validate, signupSchema, loginSchema, refreshSchema, forgotPasswordSchema, resetPasswordSchema } = require('../middlewares/validate.middleware');
 
-// POST /auth/signup -> Crée un compte (Opt-in) et envoie un email
-router.post('/signup', AuthController.signup);
+// POST /auth/signup
+router.post('/signup', validate(signupSchema), AuthController.signup);
 
-// GET /auth/double-opt-in -> Valide le compte via un token (Double Opt-in)
+// GET /auth/double-opt-in?t=...
 router.get('/double-opt-in', AuthController.doubleOptIn);
 
-// POST /auth/login -> Connexion (retourne un token JWT)
-router.post('/login', AuthController.login);
+// POST /auth/login
+router.post('/login', validate(loginSchema), AuthController.login);
+
+// POST /auth/refresh
+router.post('/refresh', validate(refreshSchema), AuthController.refresh);
+
+// POST /auth/forgot-password
+router.post('/forgot-password', validate(forgotPasswordSchema), AuthController.forgotPassword);
+
+// POST /auth/reset-password
+router.post('/reset-password', validate(resetPasswordSchema), AuthController.resetPassword);
 
 module.exports = router;
