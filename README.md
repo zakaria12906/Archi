@@ -88,8 +88,13 @@ Technologies : Node.js, Express, MongoDB, RabbitMQ
 
 
 
+
+
 5. Développement des Services
+
+   
 5.1. Développement du Auth-Service
+
  Modèle Utilisateur (user.model.js)
 Le modèle utilisateur permet de gérer les comptes des utilisateurs avec leur rôle.
 
@@ -110,6 +115,7 @@ PUT /customers/:id/debit : Débiter le compte après un pari
 
 
 5.3. Développement du Match-Service
+
 ✅ Modèles de données
 team.model.js : Stocke les équipes et leurs informations.
 match.model.js : Stocke les matchs et leurs cotes.
@@ -122,6 +128,7 @@ PUT /matches/:id/status : Modifier le statut du match (upcoming, in_progress, fi
 
 
 5.4. Développement du Bet-Service
+
 ✅ Modèle de Pari (bet.model.js)
 Stocke les paris avec l’identifiant du match et le type de pari.
 
