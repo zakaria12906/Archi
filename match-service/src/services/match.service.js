@@ -1,77 +1,131 @@
 // src/services/match.service.js
+const fs = require('fs');
+const path = require('path');
+const csv = require('csv-parser');
 const Match = require('../models/match.model');
+const Team = require('../models/team.model');
+const { publishEvent } = require('./mq.service');
 
-// Créer un match
-exports.createMatch = async (data) => {
-  const match = new Match(data);
+/**
+ * 📥 Importe les matchs depuis un fichier CSV stocké dans `data/`
+ */
+exports.importMatchesFromCSV = async () => {
+  return new Promise((resolve, reject) => {
+    const filePath = path.join(__dirname, '../../data/matches.csv');
+
+    if (!fs.existsSync(filePath)) {
+      return reject(new Error(`Fichier introuvable : ${filePath}`));
+    }
+
+    let matches = [];
+
+    fs.createReadStream(filePath)
+      .pipe(csv())
+      .on('data', async (row) => {
+        const homeTeam = await Team.findOne({ name: row["Home Team"] });
+        const awayTeam = await Team.findOne({ name: row["Away Team"] });
+
+        if (homeTeam && awayTeam) {
+          matches.push({
+            teams: { home: homeTeam.name, away: awayTeam.name },
+            date: new Date(row["Date"]),
+            odds: {
+              homeWin: parseFloat(row["Odds Home"]),
+              draw: parseFloat(row["Odds Draw"]),
+              awayWin: parseFloat(row["Odds Away"])
+            },
+            status: "upcoming"
+          });
+        }
+      })
+      .on('end', async () => {
+        let countCreated = 0;
+        for (const matchData of matches) {
+          const existingMatch = await Match.findOne({
+            "teams.home": matchData.teams.home,
+            "teams.away": matchData.teams.away,
+            "date": matchData.date
+          });
+
+          if (!existingMatch) {
+            await Match.create(matchData);
+            countCreated++;
+          }
+        }
+        console.log(`[Match Service] Imported ${countCreated} matches`);
+        resolve({ countCreated });
+      })
+      .on('error', (err) => reject(err));
+  });
+};
+
+/**
+ * 📌 Création d’un match (Réservé aux bookmakers)
+ */
+exports.createMatch = async (matchData) => {
+  const homeTeam = await Team.findOne({ name: matchData.teams.home });
+  const awayTeam = await Team.findOne({ name: matchData.teams.away });
+
+  if (!homeTeam || !awayTeam) {
+    throw new Error("L'une des équipes n'existe pas");
+  }
+
+  const match = new Match({
+    teams: matchData.teams,
+    date: matchData.date,
+    odds: matchData.odds,
+    status: "upcoming",
+    createdBy: matchData.createdBy
+  });
+
   await match.save();
   return match;
 };
 
-// Obtenir tous les matchs (optionnel : filtrer par statut, date, etc.)
+/**
+ * 📌 Récupération de tous les matchs
+ */
 exports.getAllMatches = async () => {
   return Match.find().sort({ date: 1 });
 };
 
-// Obtenir un match par son ID
-exports.getMatchById = async (matchId) => {
-  return Match.findById(matchId);
-};
-
-// Mettre à jour un match (données générales)
-exports.updateMatch = async (matchId, data) => {
-  return Match.findByIdAndUpdate(matchId, data, { new: true });
-};
-
-// Supprimer un match
-exports.deleteMatch = async (matchId) => {
-  return Match.findByIdAndDelete(matchId);
-};
-
-// Mettre à jour les cotes
+/**
+ * 📌 Mettre à jour les cotes d’un match
+ */
 exports.updateOdds = async (matchId, newOdds) => {
   const match = await Match.findById(matchId);
-  if (!match) throw new Error("Match not found");
+  if (!match) throw new Error("Match introuvable");
 
-  // newOdds est un objet, ex: { homeWin: 1.5, draw: 3.2 }
-  for (const key in newOdds) {
-    match.odds.set(key, newOdds[key]);
-  }
+  // Historique des cotes
+  match.oddsHistory.push({
+    updatedAt: new Date(),
+    oddsSnapshot: match.odds
+  });
+
+  // Mise à jour des cotes
+  match.odds = newOdds;
+  
   await match.save();
   return match;
 };
 
-// Mettre un match en featured ou non
-exports.setFeatured = async (matchId, featured) => {
+/**
+ * 📌 Mettre à jour le statut d’un match (upcoming → in_progress → finished)
+ */
+exports.updateMatchStatus = async (matchId, newStatus) => {
   const match = await Match.findById(matchId);
-  if (!match) throw new Error("Match not found");
-  match.featured = featured;
-  await match.save();
-  return match;
-};
+  if (!match) throw new Error("Match introuvable");
 
-// Passer un match en in_progress
-exports.startMatch = async (matchId) => {
-  const match = await Match.findById(matchId);
-  if (!match) throw new Error("Match not found");
-  if (match.status !== "upcoming") {
-    throw new Error("Match is not in upcoming status");
-  }
-  match.status = "in_progress";
+  match.status = newStatus;
   await match.save();
-  return match;
-};
 
-// Passer un match en finished (avec un score final)
-exports.finishMatch = async (matchId, scoreHome, scoreAway) => {
-  const match = await Match.findById(matchId);
-  if (!match) throw new Error("Match not found");
-  if (match.status !== "in_progress") {
-    throw new Error("Match is not in in_progress status");
+  // Publier un événement en fonction du nouveau statut
+  if (newStatus === "in_progress") {
+    await publishEvent('match_started', { matchId: match._id });
   }
-  match.score.home = scoreHome;
-  match.score.away = scoreAway;
-  match.status = "finished";
-  await match.save();
+  if (newStatus === "finished") {
+    await publishEvent('match_finished', { matchId: match._id });
+  }
+
   return match;
 };

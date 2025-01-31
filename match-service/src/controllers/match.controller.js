@@ -1,110 +1,86 @@
 // src/controllers/match.controller.js
 const MatchService = require('../services/match.service');
 
-exports.createMatch = async (req, res) => {
+/**
+ * 📥 Importe les matchs depuis un fichier CSV stocké dans `data/`
+ * ✅ Accessible uniquement aux bookmakers et admins
+ */
+exports.importMatches = async (req, res) => {
   try {
-    const matchData = req.body; // { teams, date, odds, etc. }
-    const newMatch = await MatchService.createMatch(matchData);
-    return res.status(201).json(newMatch);
+    const result = await MatchService.importMatchesFromCSV();
+    res.status(200).json(result);
   } catch (err) {
-    console.error("createMatch error:", err);
-    return res.status(400).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
+/**
+ * 📌 Création d’un match (Réservé aux bookmakers)
+ */
+exports.createMatch = async (req, res) => {
+  try {
+    const match = await MatchService.createMatch(req.body);
+    res.status(201).json(match);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+/**
+ * 📌 Récupérer tous les matchs triés par date
+ */
 exports.getAllMatches = async (req, res) => {
   try {
     const matches = await MatchService.getAllMatches();
-    return res.status(200).json(matches);
+    res.status(200).json(matches);
   } catch (err) {
-    console.error("getAllMatches error:", err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
-exports.getMatchById = async (req, res) => {
-  try {
-    const matchId = req.params.id;
-    const match = await MatchService.getMatchById(matchId);
-    if (!match) return res.status(404).json({ error: "Match not found" });
-    return res.status(200).json(match);
-  } catch (err) {
-    console.error("getMatchById error:", err);
-    return res.status(400).json({ error: err.message });
-  }
-};
-
-exports.updateMatch = async (req, res) => {
-  try {
-    const matchId = req.params.id;
-    const updated = await MatchService.updateMatch(matchId, req.body);
-    if (!updated) return res.status(404).json({ error: "Match not found" });
-    return res.status(200).json(updated);
-  } catch (err) {
-    console.error("updateMatch error:", err);
-    return res.status(400).json({ error: err.message });
-  }
-};
-
-exports.deleteMatch = async (req, res) => {
-  try {
-    const matchId = req.params.id;
-    const deleted = await MatchService.deleteMatch(matchId);
-    if (!deleted) return res.status(404).json({ error: "Match not found" });
-    return res.status(200).json({ message: "Match deleted" });
-  } catch (err) {
-    console.error("deleteMatch error:", err);
-    return res.status(400).json({ error: err.message });
-  }
-};
-
-// Mettre à jour les cotes
+/**
+ * 📌 Met à jour les cotes d'un match (Réservé aux bookmakers)
+ */
 exports.updateOdds = async (req, res) => {
   try {
-    const matchId = req.params.id;
-    const newOdds = req.body; // ex: { homeWin: 1.5, draw: 3.2, awayWin: 2.0 }
-    const match = await MatchService.updateOdds(matchId, newOdds);
-    return res.status(200).json(match);
+    const { id } = req.params;
+    const updatedMatch = await MatchService.updateOdds(id, req.body);
+    res.status(200).json(updatedMatch);
   } catch (err) {
-    console.error("updateOdds error:", err);
-    return res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 };
 
-// Mettre en avant / feature
-exports.setFeatured = async (req, res) => {
+/**
+ * 📌 Met à jour le statut d’un match (upcoming → in_progress → finished)
+ */
+exports.updateMatchStatus = async (req, res) => {
   try {
-    const matchId = req.params.id;
-    const { featured } = req.body; // boolean
-    const match = await MatchService.setFeatured(matchId, featured);
-    return res.status(200).json(match);
+    const { id } = req.params;
+    const { status } = req.body;
+    const updatedMatch = await MatchService.updateMatchStatus(id, status);
+    res.status(200).json(updatedMatch);
   } catch (err) {
-    console.error("setFeatured error:", err);
-    return res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 };
 
-// Démarrer le match
-exports.startMatch = async (req, res) => {
-  try {
-    const matchId = req.params.id;
-    const match = await MatchService.startMatch(matchId);
-    return res.status(200).json(match);
-  } catch (err) {
-    console.error("startMatch error:", err);
-    return res.status(400).json({ error: err.message });
-  }
-};
 
-// Terminer le match
-exports.finishMatch = async (req, res) => {
+/**
+ * 📌 Suppression d’un match
+ */
+exports.deleteMatch = async (req, res) => {
   try {
-    const matchId = req.params.id;
-    const { homeScore, awayScore } = req.body; // ex: { homeScore: 2, awayScore: 1 }
-    const match = await MatchService.finishMatch(matchId, homeScore, awayScore);
-    return res.status(200).json(match);
+    const { id } = req.params;
+    const deletedMatch = await MatchService.deleteMatch(id);
+
+    if (!deletedMatch) {
+      return res.status(404).json({ error: "Match introuvable" });
+    }
+
+    return res.status(200).json({ message: "Match supprimé avec succès" });
   } catch (err) {
-    console.error("finishMatch error:", err);
-    return res.status(400).json({ error: err.message });
+    console.error("[Match Controller] deleteMatch error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };

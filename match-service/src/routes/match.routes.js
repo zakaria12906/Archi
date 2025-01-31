@@ -1,25 +1,23 @@
 // src/routes/match.routes.js
-const router = require('express').Router();
+const express = require('express');
+const router = express.Router();
 const MatchController = require('../controllers/match.controller');
-const { verifyToken, isBookmakerOrAdmin } = require('../middlewares/auth.middleware');
+const { verifyToken, isBookmaker } = require('../middlewares/auth.middleware');
 
-// 1. Lecture
-router.get('/', MatchController.getAllMatches); // accessible à tous
-router.get('/:id', MatchController.getMatchById); // accessible à tous
+// 📌 Récupérer tous les matchs
+router.get('/', MatchController.getAllMatches);
 
-// 2. Création, mise à jour, suppression (protégé)
-router.post('/', verifyToken, isBookmakerOrAdmin, MatchController.createMatch);
-router.put('/:id', verifyToken, isBookmakerOrAdmin, MatchController.updateMatch);
-router.delete('/:id', verifyToken, isBookmakerOrAdmin, MatchController.deleteMatch);
+// 📥 Importer les matchs (Réservé aux bookmakers et admins)
+router.post('/import-csv', verifyToken, isBookmaker, MatchController.importMatches);
 
-// 3. Mise à jour spécifique des cotes
-router.put('/:id/odds', verifyToken, isBookmakerOrAdmin, MatchController.updateOdds);
+// 📌 Créer un match (Réservé aux bookmakers)
+router.post('/', verifyToken, isBookmaker, MatchController.createMatch);
 
-// 4. Mettre en avant (featured)
-router.put('/:id/featured', verifyToken, isBookmakerOrAdmin, MatchController.setFeatured);
+// 📌 Mettre à jour les cotes d’un match (Réservé aux bookmakers)
+router.put('/:id/odds', verifyToken, isBookmaker, MatchController.updateOdds);
 
-// 5. Démarrer et terminer un match
-router.post('/:id/start', verifyToken, isBookmakerOrAdmin, MatchController.startMatch);
-router.post('/:id/finish', verifyToken, isBookmakerOrAdmin, MatchController.finishMatch);
+// 📌 Modifier le statut d’un match (Réservé aux bookmakers)
+router.put('/:id/status', verifyToken, isBookmaker, MatchController.updateMatchStatus);
+router.delete('/:id', verifyToken, isBookmaker, MatchController.deleteMatch);
 
 module.exports = router;

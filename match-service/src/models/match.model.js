@@ -6,16 +6,22 @@ const matchSchema = new mongoose.Schema({
     home: { type: String, required: true },
     away: { type: String, required: true }
   },
-  date: {
-    type: Date,
-    required: true
-  },
+  date: { type: Date, required: true },
   odds: {
-    type: Map,
-    of: Number,
-    default: {}
-    // ex: { homeWin: 1.8, draw: 3.2, awayWin: 2.1 }
+    homeWin: { type: Number, required: true },
+    draw: { type: Number, required: true },
+    awayWin: { type: Number, required: true }
   },
+  oddsHistory: [
+    {
+      updatedAt: { type: Date, default: Date.now },
+      oddsSnapshot: {
+        homeWin: Number,
+        draw: Number,
+        awayWin: Number
+      }
+    }
+  ],
   status: {
     type: String,
     enum: ["upcoming", "in_progress", "finished"],
@@ -25,14 +31,9 @@ const matchSchema = new mongoose.Schema({
     home: { type: Number, default: 0 },
     away: { type: Number, default: 0 }
   },
-  // Pour mettre en avant un match (promos, highlight, etc.)
-  featured: {
-    type: Boolean,
-    default: false
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  createdBy: {
+    type: String, // ID du bookmaker qui a créé le match
+    required: true
   }
 });
 
